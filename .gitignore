@@ -1,7 +1,8 @@
 # json files
 *.json
 
-# emacs backups
+# emacs
+*.org
 *~
 
 # Byte-compiled / optimized / DLL files

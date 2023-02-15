@@ -20,23 +20,22 @@ import math
 use('TkAgg')
 
 from matplotlib.figure import Figure
-from matplotlib.backends.backend_tkagg import (
-    FigureCanvasTkAgg,
-    NavigationToolbar2Tk
-)
+from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg,
+                                               NavigationToolbar2Tk)
 import matplotlib.pyplot as plt
 from matplotlib.dates import DateFormatter
 
 PROJECT_PATH = pathlib.Path(__file__).parent
 PROJECT_UI = PROJECT_PATH / 'snowwhite.ui'
 
-TIME_STEP = 20                # en segundos
+TIME_STEP = 20  # en segundos
 VOLUME_CONVERSION = TIME_STEP / 3600.0
 PWD = pathlib.Path(sys.executable).parent
 OUTPUT_FOLDER = PWD / 'Output_Snowwhite'
 
 
 class SnowWhiteApp:
+
     def __init__(self, master=None):
         self.builder = builder = pygubu.Builder()
         builder.add_resource_path(PROJECT_PATH)
@@ -60,9 +59,10 @@ class SnowWhiteApp:
 
         self.figure2 = Figure(figsize=(5, 3), dpi=100)
         self.figure2.add_subplot(111)
-        self.canvas2 = FigureCanvasTkAgg(self.figure2, master=self.plotcontainer2)
+        self.canvas2 = FigureCanvasTkAgg(self.figure2,
+                                         master=self.plotcontainer2)
         self.canvas2.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
-        
+
         # Setup matplotlib toolbar (optional)
         # self.toolbar = NavigationToolbar2Tk(self.canvas, self.plotcontainer)
         # self.toolbar.update()
@@ -86,20 +86,17 @@ class SnowWhiteApp:
 
         file_datadf = OUTPUT_FOLDER / 'snowwhite_finedata.json'
         if file_datadf.is_file():
-            self.datadf = pd.read_json(file_datadf,
-                                       orient='table')
+            self.datadf = pd.read_json(file_datadf, orient='table')
         else:
             self.datadf = pd.DataFrame()
 
         # Releeemos los datos horarios de los pasados 10 días
         # esto es un loop sobre los ultimos 10 días
         dtnow = pd.Timestamp.today()
-        self.measuredf = pd.DataFrame(columns=['measuretime',
-                                               'meanflowrate',
-                                               'sdflowrate',
-                                               'nflowrate',
-                                               'volume',
-                                               'errorvolume'])
+        self.measuredf = pd.DataFrame(columns=[
+            'measuretime', 'meanflowrate', 'sdflowrate', 'nflowrate', 'volume',
+            'errorvolume'
+        ])
 
         for sdate in (dtnow - pd.Timedelta(9 - n, 'd') for n in range(10)):
 
@@ -109,33 +106,27 @@ class SnowWhiteApp:
                               nfile_measureddf)
 
             if file_measuredf.is_file():
-                self.measuredf = pd.concat([self.measuredf,
-                                            pd.read_json(file_measuredf,
-                                                         orient='table')])
+                self.measuredf = pd.concat([
+                    self.measuredf,
+                    pd.read_json(file_measuredf, orient='table')
+                ])
 
         moving_lastweek = (self.measuredf.measuretime >
                            dtnow - pd.Timedelta(weeks=1))
         self.measuredf = self.measuredf[moving_lastweek]
 
         nfile_sampledf = 'filters_' + dtnow.strftime('%Y') + '.json'
-        file_sampledf = (OUTPUT_FOLDER / dtnow.strftime('%Y') /
-                         nfile_sampledf)
+        file_sampledf = (OUTPUT_FOLDER / dtnow.strftime('%Y') / nfile_sampledf)
         if file_sampledf.is_file():
-            self.sampledf = pd.read_json(file_sampledf,
-                                         orient='table')
+            self.sampledf = pd.read_json(file_sampledf, orient='table')
             self.samplestats = CentralStats(self.sampledf['n'].iloc[-1],
                                             self.sampledf['sum'].iloc[-1],
                                             self.sampledf['sumsq'].iloc[-1])
         else:
-            self.sampledf = pd.DataFrame(columns=['measuretime',
-                                                  'duration',
-                                                  'flowrate',
-                                                  'errorflowrate',
-                                                  'volume',
-                                                  'errorvolume',
-                                                  'n',
-                                                  'sum',
-                                                  'sumsq'])
+            self.sampledf = pd.DataFrame(columns=[
+                'measuretime', 'duration', 'flowrate', 'errorflowrate',
+                'volume', 'errorvolume', 'n', 'sum', 'sumsq'
+            ])
             self.samplestats = CentralStats(0, 0.0, 0.0)
 
         # Iniciamos el update
@@ -150,9 +141,7 @@ class SnowWhiteApp:
         # Descargamos los datos
         data = self.getdata()
         self.datadf = pd.concat([self.datadf, data])
-        self.savejson(self.datadf,
-                      None,
-                      OUTPUT_FOLDER,
+        self.savejson(self.datadf, None, OUTPUT_FOLDER,
                       'snowwhite_finedata.json')
         # Para calcular el flow medido por senya:
         # if len(self.datadf) == 1:
@@ -169,25 +158,20 @@ class SnowWhiteApp:
 
         if timehoursecs >= 0.0 and timehoursecs < TIME_STEP:
             measuredatehour = actualdatehour - pd.Timedelta(hours=1)
-            data_lasthour = ((self.datadf.actualdatetime >
-                              measuredatehour) &
-                             (self.datadf.actualdatetime <=
-                              actualdatehour))
+            data_lasthour = ((self.datadf.actualdatetime > measuredatehour) &
+                             (self.datadf.actualdatetime <= actualdatehour))
             meanflow = self.datadf[data_lasthour].flowrate.mean()
             stdflow = self.datadf[data_lasthour].flowrate.std()
             numflow = len(self.datadf[data_lasthour])
-            new_measure = [measuredatehour,
-                           meanflow,
-                           stdflow,
-                           numflow,
-                           meanflow,
-                           stdflow / math.sqrt(numflow)]
+            new_measure = [
+                measuredatehour, meanflow, stdflow, numflow, meanflow,
+                stdflow / math.sqrt(numflow)
+            ]
             self.measuredf.loc[len(self.measuredf)] = new_measure
 
             # Guardamos los datos horarios del último día en un fichero
             daydate = self.measuredf.iloc[-1].measuretime.floor('D')
-            self.savejson(self.measuredf,
-                          daydate,
+            self.savejson(self.measuredf, daydate,
                           OUTPUT_FOLDER / daydate.strftime('%Y'),
                           'snowwhite_' + daydate.strftime('%y%m%d') + '.json')
 
@@ -195,33 +179,29 @@ class SnowWhiteApp:
         if data.iloc[0].status == 1:
             startdatetime = data.iloc[0].startdatetime
             if startdatetime in self.sampledf['measuretime'].values:
-                locindex = self.sampledf.index[self.sampledf.measuretime
-                                               == startdatetime]
+                locindex = self.sampledf.index[self.sampledf.measuretime ==
+                                               startdatetime]
             else:
                 self.samplestats.reset()
                 locindex = [len(self.sampledf)]
 
             self.samplestats.add(data.loc[0]['flowrate'])
-            smeanflow, svarflow, sstdflow, serrorflow = self.samplestats.get_stats()
+            smeanflow, svarflow, sstdflow, serrorflow = self.samplestats.get_stats(
+            )
             nflow, sumflow, sumsqflow = self.samplestats.get_sums()
             duration = timediffseconds(startdatetime, actualdatetime)
 
-            new_sample = [startdatetime,
-                          duration,
-                          smeanflow,
-                          serrorflow,
-                          smeanflow * (duration / 3600.0),
-                          serrorflow * (duration / 3600.0),
-                          nflow,
-                          sumflow,
-                          sumsqflow]
+            new_sample = [
+                startdatetime, duration, smeanflow, serrorflow,
+                smeanflow * (duration / 3600.0),
+                serrorflow * (duration / 3600.0), nflow, sumflow, sumsqflow
+            ]
             self.sampledf.loc[locindex[0]] = new_sample
 
             # Guardamos las medidas de los filtros del último año
             yeardate = (self.sampledf.iloc[-1].measuretime.floor('d') -
                         pd.tseries.offsets.YearBegin())
-            self.savejson(self.sampledf,
-                          yeardate,
+            self.savejson(self.sampledf, yeardate,
                           OUTPUT_FOLDER / yeardate.strftime('%Y'),
                           'filters_' + yeardate.strftime('%Y') + '.json')
 
@@ -247,7 +227,7 @@ class SnowWhiteApp:
         self.figure2.clear()
 
         gs = self.figure.add_gridspec(1, 3, wspace=0)
-        rtplot,  histplot, pressplot = gs.subplots(sharey=True)
+        rtplot, histplot, pressplot = gs.subplots(sharey=True)
 
         rtplot.set_xlabel('Hora (UTC)')
         rtplot.set_ylabel('Caudal (m3/h)')
@@ -263,10 +243,11 @@ class SnowWhiteApp:
         date_form = DateFormatter("%H:%M")
         rtplot.xaxis.set_major_formatter(date_form)
 
-        n, bins, patches = histplot.hist(self.datadf.flowrate,
-                                         # bins=30,
-                                         density=True,
-                                         orientation="horizontal")
+        n, bins, patches = histplot.hist(
+            self.datadf.flowrate,
+            # bins=30,
+            density=True,
+            orientation="horizontal")
         histplot.xaxis.set_ticks_position('top')
         histplot.xaxis.set_label_position('top')
         histplot.set_xlabel('Frecuencia relativa normalizada')
@@ -281,7 +262,7 @@ class SnowWhiteApp:
             histplot.set_ylim(ymin, ymax)
 
             # Grafico gaussiana
-            y = np.arange(ymin, ymax, (ymax-ymin)/100.0)
+            y = np.arange(ymin, ymax, (ymax - ymin) / 100.0)
             histplot.plot(gaussian(y, mean_flow, std_flow), y)
 
         pressplot.scatter(self.datadf.Pdiff, self.datadf.flowrate)
@@ -290,8 +271,7 @@ class SnowWhiteApp:
         #                     maxlags=34, normed=True,  usevlines=True)
 
         volumeplot = self.figure2.add_subplot(1, 1, 1)
-        volumeplot.errorbar(self.measuredf.measuretime,
-                            self.measuredf.volume,
+        volumeplot.errorbar(self.measuredf.measuretime, self.measuredf.volume,
                             self.measuredf.errorvolume)
         volumeplot.set_xlabel('Fecha')
         volumeplot.xaxis.set_major_formatter(DateFormatter("%Hh %d/%m"))

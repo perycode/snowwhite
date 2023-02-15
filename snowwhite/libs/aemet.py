@@ -19,6 +19,7 @@ aemet = pd.read_csv(url,
 Pstp = 1000.0                   # 1013.5 unidades hPa
 Tsp = 273.15                    # unidades ºK
 
+
 rho_stp = Pstp/Tsp
 
 aemet['rho'] = (aemet.pressure)/(273.15 + aemet.temperature)
