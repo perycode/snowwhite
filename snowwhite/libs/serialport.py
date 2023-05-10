@@ -13,14 +13,16 @@ class SerialPort(Serial):
         for nameparam in params:
             setattr(self, nameparam, params[nameparam])
 
+        self._sio = io.TextIOWrapper(io.BufferedReader(self),
+                                     newline=self.charendline)
+        self._sio._CHUNK_SIZE = 1
+
     def connect(self):
         try:
             self.open()
-            self._sio = io.TextIOWrapper(io.BufferedReader(self),
-                                         newline=self.charendline)
-            self._sio._CHUNK_SIZE = 1
             return self.is_open
         except SerialException:
+            print(SerialException)
             return False
 
     # disconnect from the serial port

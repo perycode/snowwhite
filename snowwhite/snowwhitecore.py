@@ -30,14 +30,17 @@ class SnowWhiteData:
             configparser['parametros'], configparser['delimitadores'])
 
         # Parametros configurables
-        self.tstep = time_step  # intervalo en segundos
+        self.time_step = time_step  # intervalo en segundos
         self.output_folder = output_folder
-
+        print(output_folder)
         # Buffer datos
         self.serialdata = pd.DataFrame()
         self.swdata = pd.DataFrame()
         self.statdata = pd.DataFrame()
-        self.sampledata = pd.DataFrame()
+        self.sampledata = pd.DataFrame(columns=[
+            'measuretime', 'duration', 'flowrate', 'errorflowrate', 'volume',
+            'errorvolume', 'n', 'sum', 'sumsq'
+        ])
 
         swdatafile = output_folder / 'snowwhite_ultimahora.json'
         if swdatafile.is_file():
@@ -50,7 +53,7 @@ class SnowWhiteData:
         for statdate in (today - pd.Timedelta(trange - (1 + n), 'd')
                          for n in range(trange)):
 
-            statdatafile = (self.ouput_folder / statdate.strftime('%Y') /
+            statdatafile = (self.output_folder / statdate.strftime('%Y') /
                             ('snowwhite_datoshorarios_' +
                              statdate.strftime('%y%m%d') + '.json'))
 
@@ -61,21 +64,22 @@ class SnowWhiteData:
                 ])
 
         # SAMPLE DATATFRAME
-        sampledatafile = (self.ouput_folder / today.strftime('%Y') /
+        sampledatafile = (self.output_folder / today.strftime('%Y') /
                           ('filtros_' + today.strftime('%Y') + '.json'))
         if sampledatafile.is_file():
             self.sampledata = pd.read_json(sampledatafile, orient='table')
-            self.sampledstats = CentralStats(self.sampledata['n'].iloc[-1],
-                                             self.sampledata['sum'].iloc[-1],
-                                             self.sampledata['sumsq'].iloc[-1])
+            self.samplestats = CentralStats(self.sampledata['n'].iloc[-1],
+                                            self.sampledata['sum'].iloc[-1],
+                                            self.sampledata['sumsq'].iloc[-1])
+        else:
+            self.samplestats = CentralStats(0.0, 0.0, 0.0)
 
     def receive_data(self):
         # Datos recibidos
-        strdata = self.get_serialdata()
-        self.serialdata = serialdata = self.parser.lineparser(strdata)
+        self.serialdata = serialdata = self.get_serialdata()
 
         # si status = 0 (bomba apagada) no almacenamos los datos
-        if serialdata.status == 0:
+        if serialdata.loc[0].status == 0:
             return
 
         # DataFrame swdata:
@@ -84,14 +88,14 @@ class SnowWhiteData:
         # una frecuencia de self.time_step cuando la la bomba esta en
         # funcionamiento
         self.swdata = pd.concat([self.swdata, serialdata])
-        self.savejson(self.swdata, None, self.ouput_folder,
-                      'snowwhite_ultimahora.json')
+        self.save_json(self.swdata, None, self.output_folder,
+                       'snowwhite_ultimahora.json')
 
         # DataFrame statdata:
         # Se guardan los datos estadisticos correspondientes a los
         # últimos diez días
         # con una frecuencia de una hora cuando la bomba está en funcionamiento
-        actualdatetime = self.swdata.iloc[0].actualdatetime
+        actualdatetime = self.serialdata.iloc[0].actualdatetime
         actualdatehour = actualdatetime.round('H')
         timehoursecs = timediffseconds(actualdatetime, actualdatehour)
 
@@ -105,22 +109,20 @@ class SnowWhiteData:
                 'flowrate': ['count', 'mean', 'std', 'sem'],
                 'Pdiff': ['count', 'mean', 'std', 'sem']
             }
-            statrow.agg(metrics)
+            statrow = statrow.agg(metrics)
             statrow = statrow.unstack().to_frame().T
             statrow.columns = statrow.columns.map('{0[0]}_{0[1]}'.format)
-
             # incluimos las fechas
             statrow.insert(0, 'time', actualdatehour)
             statrow.insert(1, 'measuretime', measuredatehour)
 
             # Calculamos el volumen
             statrow['volume'] = statrow.flowrate_mean * (
-                (statrow.flowrate_count * self.tstep) * 3600)
+                (statrow.flowrate_count * self.time_step) / 3600)
             statrow['volume_error'] = statrow.flowrate_sem * (
-                (statrow.flowrate_count * self.tstep) * 3600)
+                (statrow.flowrate_count * self.time_step) / 3600)
 
-            self.statdata = pd.concat(self.statdata,
-                                      statrow,
+            self.statdata = pd.concat([self.statdata, statrow],
                                       ignore_index=True)
             # Se ordenan por fecha:
             # los valores recientes al final del dataframe
@@ -128,9 +130,9 @@ class SnowWhiteData:
 
             # Guardamos los datos horarios del último día en un fichero
             lastday = self.statdata.iloc[-1].measuretime.floor('D')
-            self.savejson(
+            self.save_json(
                 self.statdata, lastday,
-                self.ouput_folder / lastday.strftime('%Y'),
+                self.output_folder / lastday.strftime('%Y'),
                 'snowwhite_datoshorarios_' + lastday.strftime('%y%m%d') +
                 '.json')
 
@@ -159,22 +161,25 @@ class SnowWhiteData:
         self.sampledata.loc[locindex[0]] = new_sample
 
         # Guardamos las medidas de los filtros del último año
-        yeardate = (self.sampledf.iloc[-1].measuretime.floor('d') -
+        yeardate = (self.sampledata.iloc[-1].measuretime.floor('d') -
                     pd.tseries.offsets.YearBegin())
-        self.savejson(self.sampledf, yeardate,
-                      self.ouput_folder / yeardate.strftime('%Y'),
-                      'filters_' + yeardate.strftime('%Y') + '.json')
+        self.save_json(self.sampledata, yeardate,
+                       self.output_folder / yeardate.strftime('%Y'),
+                       'filtros_' + yeardate.strftime('%Y') + '.json')
 
     def del_olddata(self):
-        # Filtramos las medidas en  swdatadf y measuredf
-        actualdatetime = self.swdata.iloc[0].actualdatetime
-        moving_lasthour = (self.swdata.actualdatetime >
-                           (actualdatetime - pd.Timedelta(hours=1)))
-        self.swdata = self.swdata[moving_lasthour]
 
-        moving_lastweek = (self.statdata.measuretime >
-                           actualdatetime - pd.Timedelta(weeks=1))
-        self.statdata = self.statdata[moving_lastweek]
+        # Filtramos las medidas en  swdatadf y measuredf
+        actualdatetime = self.swdata.iloc[-1].actualdatetime
+
+        if not self.swdata.empty:
+            moving_lasthour = (self.swdata.actualdatetime >
+                               (actualdatetime - pd.Timedelta(hours=1)))
+            self.swdata = self.swdata[moving_lasthour]
+        if not self.statdata.empty:
+            moving_lastweek = (self.statdata.measuretime >
+                               actualdatetime - pd.Timedelta(weeks=1))
+            self.statdata = self.statdata[moving_lastweek]
 
     @staticmethod
     def save_json(df, inidate, folder, namefile):

@@ -77,7 +77,7 @@ class SnowWhiteApp:
         self.snowwhite.del_olddata()
 
         # Actualizamos la tabla del GUI
-        self.update_treeview(self.snowwhite.serialdata)
+        self.update_treeview()
 
         # Actualizamos los graficos
         self.update_plots()
@@ -87,6 +87,9 @@ class SnowWhiteApp:
         # Graficos
         self.figure.clear()
         self.figure2.clear()
+
+        if self.snowwhite.swdata.empty:
+            return
 
         gs = self.figure.add_gridspec(1, 3, wspace=0)
         rtplot, histplot, pressplot = gs.subplots(sharey=True)
@@ -112,6 +115,8 @@ class SnowWhiteApp:
         histplot.xaxis.set_label_position('top')
         histplot.set_xlabel('Frecuencia relativa normalizada')
 
+        self.canvas.draw_idle()
+
         if len(self.snowwhite.swdata) > 1:
             mean_flow = self.snowwhite.swdata.flowrate.mean()
             std_flow = self.snowwhite.swdata.flowrate.std(ddof=0)
@@ -128,29 +133,55 @@ class SnowWhiteApp:
             pressplot.scatter(self.snowwhite.swdata.Pdiff,
                               self.snowwhite.swdata.flowrate)
 
+        if self.snowwhite.statdata.empty:
+            return
+
         volumeplot = self.figure2.add_subplot(1, 1, 1)
         volumeplot.errorbar(self.snowwhite.statdata.measuretime,
                             self.snowwhite.statdata.volume,
-                            self.snowwhite.statdata.errorvolume)
+                            self.snowwhite.statdata.volume_error)
         volumeplot.set_xlabel('Fecha')
         volumeplot.xaxis.set_major_formatter(DateFormatter("%Hh %d/%m"))
 
-        self.canvas.draw_idle()
         self.canvas2.draw_idle()
 
-    def update_treeview(self, data):
+    def update_treeview(self):
 
         # Actualizamos la tabla de ultimos valores recibidos:
         # Borramos la tabla
         children = self.trv.get_children()
         self.trv.delete(*children)
 
-        # recorremos las columnas
-        for col in data:
-            self.trv.insert('',
+        serialdata = self.snowwhite.serialdata
+        statdata = self.snowwhite.statdata
+        sampledata = self.snowwhite.sampledata
+
+        # SERIAL DATA
+        itemid = self.trv.insert('', tk.END, text="Frecuencia 20 segs")
+
+        for col in serialdata:
+            self.trv.insert(itemid,
                             tk.END,
-                            text=data[col].name,
-                            values=data[col].values[0])
+                            text='',
+                            values=(serialdata[col].name,
+                                    serialdata[col].values[0]))
+        # DATOS HORARIOS
+        itemid = self.trv.insert('', tk.END, text="Datos Horarios")
+        for col in statdata:
+            self.trv.insert(itemid,
+                            tk.END,
+                            text='',
+                            values=(statdata[col].name,
+                                    statdata[col].values[-1]))
+
+        # DATOS FILTRO
+        itemid = self.trv.insert('', tk.END, text="Datos Filtro")
+        for col in sampledata:
+            self.trv.insert(itemid,
+                            tk.END,
+                            text='',
+                            values=(sampledata[col].name,
+                                    sampledata[col].values[-1]))
 
     def close(self):
         self.mainwindow.destroy()

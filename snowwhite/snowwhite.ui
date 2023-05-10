@@ -6,8 +6,8 @@
     <property name="resizable">both</property>
     <property name="width">200</property>
     <containerlayout manager="grid">
-      <property id="0" name="weight" type="col">1</property>
-      <property id="0" name="weight" type="row">1</property>
+      <property type="col" id="0" name="weight">1</property>
+      <property type="row" id="0" name="weight">1</property>
     </containerlayout>
     <child>
       <object class="ttk.Frame" id="frame" named="True">
@@ -19,8 +19,8 @@
           <property name="sticky">nsew</property>
         </layout>
         <containerlayout manager="grid">
-          <property id="0" name="weight" type="col">1</property>
-          <property id="0" name="weight" type="row">1</property>
+          <property type="col" id="0" name="weight">1</property>
+          <property type="row" id="0" name="weight">1</property>
         </containerlayout>
         <child>
           <object class="ttk.Panedwindow" id="panedwindow1">
@@ -44,8 +44,8 @@
                       <property name="row">0</property>
                     </layout>
                     <containerlayout manager="grid">
-                      <property id="0" name="weight" type="col">1</property>
-                      <property id="0" name="weight" type="row">1</property>
+                      <property type="col" id="0" name="weight">1</property>
+                      <property type="row" id="0" name="weight">1</property>
                     </containerlayout>
                     <child>
                       <object class="tk.Canvas" id="plot_container" named="True">
@@ -86,7 +86,7 @@
                         <property name="minwidth">20</property>
                         <property name="stretch">true</property>
                         <property name="text" translatable="yes">Parametro</property>
-                        <property name="tree_column">true</property>
+                        <property name="tree_column">false</property>
                         <property name="visible">true</property>
                         <property name="width">200</property>
                       </object>

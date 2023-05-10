@@ -22,9 +22,8 @@ class ParserFixedWidth():
                 self.parse_dates.append(name)
 
     def lineparser(self, linedata):
-
-        strdata = StringIO(linedata[linedata.find(self.inichar)+1:
-                                    linedata.find(self.endchar)])
+        strdata = StringIO(linedata[linedata.find(self.inichar) +
+                                    1:linedata.find(self.endchar)])
         values = pd.read_fwf(strdata,
                              index_col=False,
                              names=self.names,
