@@ -292,14 +292,14 @@ class SnowWhite:
 
         self.dflock.release()
 
-    def get_rtdata(self) -> Tuple[pd.DataFrame, float]:
+    def get_rtdata(self) -> float:
         """
         Consulta de los datos medidos actualmente en la estación snowwhite.
 
         :returns: Los valores medidos actualmente en la estación snowwhite
             y el desfase temporal del reloj interno de la snowhwite con el pc
             que hace la consulta.
-        :rtype: Tuple[pd.DataFrame,float]
+        :rtype: float
 
         """
 
