@@ -1,2 +1,2 @@
 # snowwhite
-This python colect and organize data from vacum pump snowwhite
+This python collect and organize data from vacum pump snowwhite
