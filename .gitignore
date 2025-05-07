@@ -1,3 +1,5 @@
+# squlite database files
+*.db
 # json files
 *.json
 
